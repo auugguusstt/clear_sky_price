@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Прайс — Чистое Небо</title>
+<style>
+  :root { --bg:#12140f; --panel:#1b1f18; --panel2:#232820; --line:#2f3529; --text:#d8e0cc; --muted:#8b9878; --accent:#8fbf3f; --amber:#e0a63c; }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  header{padding:16px 20px; border-bottom:1px solid var(--line); background:linear-gradient(180deg,#171a13,#12140f);}
+  header h1{margin:0; font-size:18px; letter-spacing:.5px; color:var(--accent)}
+  header span{color:var(--muted); font-size:13px}
+  .layout{display:flex; gap:16px; padding:16px; align-items:flex-start; max-width:1400px; margin:0 auto}
+  .catalog{flex:1; min-width:0}
+  .toolbar{display:flex; flex-direction:column; gap:10px; margin-bottom:16px}
+  #search{width:100%; padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text); font-size:15px; outline:none;}
+  #search:focus{border-color:var(--accent)}
+  .cats{display:flex; gap:8px; flex-wrap:wrap}
+  .cats button{padding:6px 14px; border-radius:20px; border:1px solid var(--line); background:var(--panel); color:var(--muted); cursor:pointer; font-size:13px;}
+  .cats button.active{background:var(--accent); color:#12140f; border-color:var(--accent); font-weight:600}
+  .grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px; position:relative; transition:border-color .15s, transform .15s;}
+  .card:hover{border-color:#435039; transform:translateY(-2px)}
+  .thumb{height:100px; border-radius:8px; background:var(--panel2); display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .thumb img{max-width:100%; max-height:100%; object-fit:contain}
+  .card .name{font-size:13px; font-weight:600; line-height:1.25; min-height:2.5em}
+  .card .price{color:var(--accent); font-weight:700; font-size:15px}
+  .card button{margin-top:auto; padding:7px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); cursor:pointer; font-size:13px;}
+  .card button:hover{background:var(--accent); color:#12140f; border-color:var(--accent)}
+  .badge{position:absolute; top:6px; right:6px; min-width:22px; height:22px; padding:0 6px; border-radius:11px; background:var(--amber); color:#12140f; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;}
+  .cart{width:340px; flex-shrink:0; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px; position:sticky; top:16px; display:flex; flex-direction:column; gap:10px; max-height:calc(100vh - 32px);}
+  .cart h2{margin:0; font-size:15px; color:var(--amber)}
+  #cartList{overflow:auto; display:flex; flex-direction:column; gap:8px; min-height:40px}
+  .empty{color:var(--muted); font-size:13px; padding:8px 0}
+  .row{display:flex; align-items:center; gap:8px; font-size:13px; border-bottom:1px solid var(--line); padding-bottom:8px}
+  .row .rn{flex:1; min-width:0}
+  .row .rn small{display:block; color:var(--muted); font-size:11px}
+  .qty{display:flex; align-items:center; gap:4px}
+  .qty button{width:24px; height:24px; border-radius:6px; border:1px solid var(--line); background:var(--panel2); color:var(--text); cursor:pointer; font-size:14px; line-height:1;}
+  .qty button:hover{background:var(--accent); color:#12140f}
+  .qty span{min-width:18px; text-align:center; font-weight:600}
+  .totals{border-top:1px solid var(--line); padding-top:10px; font-size:13px; display:flex; flex-direction:column; gap:4px}
+  .totals .big{font-size:20px; font-weight:700; color:var(--accent)}
+  .cart > button{padding:11px; border-radius:10px; border:none; cursor:pointer; font-size:14px; font-weight:600;}
+  #copy{background:var(--accent); color:#12140f}
+  #copy:disabled{opacity:.4; cursor:default}
+  #clear{background:transparent; color:var(--muted); border:1px solid var(--line)}
+  @media (max-width:820px){ .layout{padding:12px} .cart{position:fixed; left:0; right:0; bottom:0; width:auto; max-height:75vh; border-radius:16px 16px 0 0; z-index:50; transform:translateY(calc(100% - 58px)); transition:transform .25s ease;} .cart.open{transform:translateY(0)} .catalog{padding-bottom:80px} .handle{display:flex; justify-content:space-between; padding:8px; background:var(--amber); color:#12140f; font-weight:bold; cursor:pointer; border-radius:8px 8px 0 0;} }
+  @media (min-width:821px){ .handle{display:none} }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<header>
+  <h1>ЧИСТОЕ НЕБО · ПРАЙС</h1>
+  <span>выбери предметы — сумма посчитается сама</span>
+</header>
+
+<div class="layout">
+  <section class="catalog">
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Поиск предмета…">
+      <div class="cats" id="cats"></div>
+    </div>
+    <div class="grid" id="grid"><div class="empty">Загрузка данных...</div></div>
+  </section>
+
+  <aside class="cart" id="cart">
+    <div class="handle" id="handle"><span>Корзина · <b id="handleTotal">0 ₽</b></span><span>▲</span></div>
+    <h2>Корзина</h2>
+    <div id="cartList"></div>
+    <div class="totals" id="totals"></div>
+    <button id="copy" disabled>Скопировать заказ</button>
+    <button id="clear">Очистить</button>
+  </aside>
+</div>
+
+<script>
+// ТВОИ КЛЮЧИ SUPABASE
+const SUPABASE_URL = "https://hkduzswixchjwwipdzkw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_k_ZCJNL29NzVQ1MhXPoS6Q_Qs2-5gP6";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let ITEMS = [];
+let cart = JSON.parse(localStorage.getItem("cn_cart") || "{}");
+let activeCat = "Все";
+let query = "";
+
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString("ru-RU") + " ₽";
+
+// Заглушка, если картинки нет
+function placeholder(name){
+  const L = (name || "?").trim()[0].toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="#232820"/><text x="60" y="76" font-size="50" font-family="sans-serif" fill="#4b5a3a" text-anchor="middle">${L}</text></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+function qtyOf(i){ return cart[i.id] || 0; }
+function change(i, d){
+  const n = qtyOf(i) + d;
+  if (n <= 0) delete cart[i.id]; else cart[i.id] = n;
+  localStorage.setItem("cn_cart", JSON.stringify(cart));
+  renderGrid(); renderCart();
+}
+
+function renderCats(){
+  const cats = ["Все", ...new Set(ITEMS.map(i => i.cat).filter(Boolean))];
+  $("cats").innerHTML = "";
+  cats.forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = c;
+    if (c === activeCat) b.classList.add("active");
+    b.onclick = () => { activeCat = c; renderCats(); renderGrid(); };
+    $("cats").appendChild(b);
+  });
+}
+
+function renderGrid(){
+  const grid = $("grid");
+  grid.innerHTML = "";
+  const list = ITEMS.filter(i => (activeCat === "Все" || i.cat === activeCat) && (!query || i.name.toLowerCase().includes(query)));
+  if (!list.length) { grid.innerHTML = '<div class="empty">Ничего не найдено</div>'; return; }
+  
+  list.forEach(i => {
+    const card = document.createElement("div"); card.className = "card";
+    const q = qtyOf(i);
+    if (q > 0) { const b = document.createElement("div"); b.className = "badge"; b.textContent = q; card.appendChild(b); }
+    const thumb = document.createElement("div"); thumb.className = "thumb";
+    const img = document.createElement("img"); img.src = i.img || placeholder(i.name);
+    img.onerror = () => { img.onerror = null; img.src = placeholder(i.name); };
+    thumb.appendChild(img);
+    const name = document.createElement("div"); name.className = "name"; name.textContent = i.name;
+    const price = document.createElement("div"); price.className = "price"; price.textContent = fmt(i.price);
+    card.append(thumb, name, price);
+    const btn = document.createElement("button"); btn.textContent = q > 0 ? "Ещё +1" : "Добавить"; btn.onclick = () => change(i, +1);
+    card.appendChild(btn); grid.appendChild(card);
+  });
+}
+
+function renderCart(){
+  const listEl = $("cartList"); listEl.innerHTML = "";
+  const entries = ITEMS.filter(i => qtyOf(i) > 0);
+  if (!entries.length) listEl.innerHTML = '<div class="empty">Корзина пуста</div>';
+  
+  let total = 0;
+  entries.forEach(i => {
+    const q = qtyOf(i); total += i.price * q;
+    const row = document.createElement("div"); row.className = "row";
+    const rn = document.createElement("div"); rn.className = "rn"; rn.innerHTML = `<div>${i.name}</div><small>${fmt(i.price)} × ${q}</small>`;
+    const qty = document.createElement("div"); qty.className = "qty";
+    const minus = document.createElement("button"); minus.textContent = "−"; minus.onclick = () => change(i, -1);
+    const num = document.createElement("span"); num.textContent = q;
+    const plus = document.createElement("button"); plus.textContent = "+"; plus.onclick = () => change(i, +1);
+    qty.append(minus, num, plus); row.append(rn, qty); listEl.appendChild(row);
+  });
+
+  $("totals").innerHTML = `<div class="big">Итого: ${fmt(total)}</div>`;
+  $("handleTotal").textContent = fmt(total);
+  $("copy").disabled = entries.length === 0;
+  $("copy").dataset.text = "📦 Заказ — Чистое Небо\n" + entries.map(i => `• ${i.name} ×${qtyOf(i)} — ${fmt(i.price * qtyOf(i))}`).join("\n") + `\nИтого: ${fmt(total)}`;
+}
+
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText($("copy").dataset.text); alert("Заказ скопирован!"); } catch(e) { alert("Ошибка копирования"); }
+};
+$("clear").onclick = () => { cart = {}; localStorage.setItem("cn_cart", "{}"); renderGrid(); renderCart(); };
+$("search").oninput = e => { query = e.target.value.trim().toLowerCase(); renderGrid(); };
+$("handle").onclick = () => $("cart").classList.toggle("open");
+
+async function loadData() {
+  const { data, error } = await sb.from('items').select('*').order('id', { ascending: true });
+  if (error) { console.error(error); alert("Ошибка загрузки базы. Проверь консоль."); return; }
+  ITEMS = data;
+  renderCats(); renderGrid(); renderCart();
+}
+
+loadData();
+</script>
+</body>
+</html>
