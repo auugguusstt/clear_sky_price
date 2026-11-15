@@ -19,11 +19,12 @@
   .cats{display:flex; gap:8px; flex-wrap:wrap}
   .cats button{padding:6px 14px; border-radius:20px; border:1px solid var(--line); background:var(--panel); color:var(--muted); cursor:pointer; font-size:13px;}
   .cats button.active{background:var(--accent); color:#12140f; border-color:var(--accent); font-weight:600}
+  /* Увеличенные иконки и сетка */
   .grid{display:grid; gap:16px; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));}
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px; position:relative; transition:border-color .15s, transform .15s;}
-  .card:hover{border-color:#435039; transform:translateY(-2px)}
   .thumb{height:150px; border-radius:8px; background:var(--panel2); display:flex; align-items:center; justify-content:center; overflow:hidden; padding: 10px;}
   .thumb img{max-width:100%; max-height:100%; object-fit:contain; transform: scale(1.1);}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px; position:relative; transition:border-color .15s, transform .15s;}
+  .card:hover{border-color:#435039; transform:translateY(-2px)}
   .card .name{font-size:13px; font-weight:600; line-height:1.25; min-height:2.5em}
   .card .price{color:var(--accent); font-weight:700; font-size:15px}
   .card button{margin-top:auto; padding:7px; border-radius:8px; border:1px solid var(--line); background:var(--panel2); color:var(--text); cursor:pointer; font-size:13px;}
@@ -83,6 +84,25 @@ const SUPABASE_URL = "https://hkduzswixchjwwipdzkw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_k_ZCJNL29NzVQ1MhXPoS6Q_Qs2-5gP6";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// --- СИСТЕМА ЛОГИРОВАНИЯ ---
+const LOG_URL = "https://hkduzswixchjwwipdzkw.supabase.co/functions/v1/log-event";
+async function sendLog(type, details = "") {
+  try {
+    await fetch(LOG_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_type: type, details: details })
+    });
+  } catch(e) {} // Если ошибка сети, просто игнорируем
+}
+
+// Логируем заход на сайт
+sendLog('visit', 'Зашел на сайт');
+
+// Пульс (каждую минуту)
+setInterval(() => sendLog('heartbeat', 'Активен'), 60000);
+// ---------------------------
+
 let ITEMS = [];
 let cart = JSON.parse(localStorage.getItem("cn_cart") || "{}");
 let activeCat = "Все";
@@ -91,7 +111,6 @@ let query = "";
 const $ = id => document.getElementById(id);
 const fmt = n => n.toLocaleString("ru-RU") + " ₽";
 
-// Заглушка, если картинки нет
 function placeholder(name){
   const L = (name || "?").trim()[0].toUpperCase();
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="#232820"/><text x="60" y="76" font-size="50" font-family="sans-serif" fill="#4b5a3a" text-anchor="middle">${L}</text></svg>`;
@@ -99,10 +118,15 @@ function placeholder(name){
 }
 
 function qtyOf(i){ return cart[i.id] || 0; }
+
 function change(i, d){
   const n = qtyOf(i) + d;
   if (n <= 0) delete cart[i.id]; else cart[i.id] = n;
   localStorage.setItem("cn_cart", JSON.stringify(cart));
+  
+  // Логируем добавление в корзину
+  if (d > 0) sendLog('add_to_cart', `Товар: ${i.name} (${i.price} ₽)`);
+  
   renderGrid(); renderCart();
 }
 
@@ -164,8 +188,16 @@ function renderCart(){
 }
 
 $("copy").onclick = async () => {
-  try { await navigator.clipboard.writeText($("copy").dataset.text); alert("Заказ скопирован!"); } catch(e) { alert("Ошибка копирования"); }
+  try { 
+    await navigator.clipboard.writeText($("copy").dataset.text); 
+    
+    // Логируем копирование заказа
+    sendLog('copy_order', `Сумма заказа: ${$("totals").innerText}`);
+    
+    alert("Заказ скопирован!"); 
+  } catch(e) { alert("Ошибка копирования"); }
 };
+
 $("clear").onclick = () => { cart = {}; localStorage.setItem("cn_cart", "{}"); renderGrid(); renderCart(); };
 $("search").oninput = e => { query = e.target.value.trim().toLowerCase(); renderGrid(); };
 $("handle").onclick = () => $("cart").classList.toggle("open");
