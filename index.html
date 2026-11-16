@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+// КТО ЧИТАЕТ ТОТ ЛОХ ( КРОМЕ МЕНЯ )
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Прайс — Чистое Небо</title>
@@ -80,12 +81,12 @@
 </div>
 
 <script>
-// ТВОИ КЛЮЧИ SUPABASE
+// Опен зе дор
 const SUPABASE_URL = "https://hkduzswixchjwwipdzkw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_k_ZCJNL29NzVQ1MhXPoS6Q_Qs2-5gP6";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// --- СИСТЕМА ЛОГИРОВАНИЯ ---
+// Тук тук
 const LOG_URL = "https://hkduzswixchjwwipdzkw.supabase.co/functions/v1/log-event";
 async function sendLog(type, details = "") {
   try {
@@ -94,10 +95,10 @@ async function sendLog(type, details = "") {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ event_type: type, details: details })
     });
-  } catch(e) {} // Если ошибка сети, просто игнорируем
+  } catch(e) {} 
 }
 
-// Логируем заход на сайт
+// Лог на сайт
 sendLog('visit', 'Зашел на сайт');
 
 // Пульс (каждую минуту)
@@ -125,7 +126,7 @@ function change(i, d){
   if (n <= 0) delete cart[i.id]; else cart[i.id] = n;
   localStorage.setItem("cn_cart", JSON.stringify(cart));
   
-  // Логируем добавление в корзину
+  // Лог корзина
   if (d > 0) sendLog('add_to_cart', `Товар: ${i.name} (${i.price} ₽)`);
   
   renderGrid(); renderCart();
@@ -192,7 +193,7 @@ $("copy").onclick = async () => {
   try { 
     await navigator.clipboard.writeText($("copy").dataset.text); 
     
-    // Логируем копирование заказа
+    // Лог заказ
     sendLog('copy_order', `Сумма заказа: ${$("totals").innerText}`);
     
     alert("Заказ скопирован!"); 
